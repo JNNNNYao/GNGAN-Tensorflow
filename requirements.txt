@@ -1,0 +1,5 @@
+tqdm
+imageio
+matplotlib
+tensorflow-gpu==2.7.0
+tensorflow-gan==2.1.0
