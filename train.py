@@ -19,6 +19,7 @@ net_G_models = {
     'dcgan.64': dcgan.Generator64,
     'resnet.32': resnet.ResGenerator32,
     'resnet.48': resnet.ResGenerator48,
+    'resnet.64': resnet.ResGenerator64,
     'resnet.128': resnet.ResGenerator128,
     'resnet.256': resnet.ResGenerator256,
 }
@@ -30,6 +31,7 @@ net_D_models = {
     'dcgan.64': dcgan.Discriminator64,
     'resnet.32': resnet.ResDiscriminator32,
     'resnet.48': resnet.ResDiscriminator48,
+    'resnet.64': resnet.ResDiscriminator64,
     'resnet.128': resnet.ResDiscriminator128,
     'resnet.256': resnet.ResDiscriminator256,
 }

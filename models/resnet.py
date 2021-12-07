@@ -76,6 +76,31 @@ class ResGenerator48(tf.Module):
         return self.output(self.blocks(z))
 
 
+class ResGenerator64(tf.Module):
+    def __init__(self, z_dim, *args):
+        super().__init__()
+        self.linear = tfkl.Dense(4 * 4 * 512, 
+                kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02), bias_initializer=tf.keras.initializers.Constant(0))
+        self.blocks = tf.keras.Sequential([
+            tfkl.InputLayer(input_shape=(4, 4, 512)),
+            GenBlock(512, 512),
+            GenBlock(512, 256),
+            GenBlock(256, 128),
+            GenBlock(128, 64),
+        ])
+        self.output = tf.keras.Sequential([
+            tfkl.BatchNormalization(),
+            tfkl.ReLU(),
+            tfkl.Conv2D(3, 3, strides=1, padding="same", activation='tanh',
+                    kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02), bias_initializer=tf.keras.initializers.Constant(0)),
+        ])
+
+    def __call__(self, z, *args, **kwargs):
+        z = self.linear(z)
+        z = tf.reshape(z, [-1, 4, 4, 512])
+        return self.output(self.blocks(z))
+
+
 class ResGenerator128(tf.Module):
     def __init__(self, z_dim, *args):
         super().__init__()
@@ -223,6 +248,28 @@ class ResDiscriminator48(tf.Module):
         return x
 
 
+class ResDiscriminator64(tf.Module):
+    def __init__(self, *args):
+        super().__init__()
+        self.model = tf.keras.Sequential([
+            OptimizedDisblock(3, 64),
+            DisBlock(64, 128, down=True),
+            DisBlock(128, 256, down=True),
+            DisBlock(256, 512, down=True),
+            DisBlock(512, 512, down=True),
+            tfkl.ReLU(),
+            tfkl.AveragePooling2D(pool_size=(1, 1)),
+            tfkl.Flatten(),
+        ])
+        self.linear = tfkl.Dense(1, 
+                kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02), bias_initializer=tf.keras.initializers.Constant(0))
+
+    def __call__(self, x, *args, **kwargs):
+        x = self.model(x)
+        x = self.linear(x)
+        return x
+
+
 class ResDiscriminator128(tf.Module):
     def __init__(self, *args):
         super().__init__()
@@ -285,6 +332,13 @@ if __name__ == '__main__':
     pred48 = D(fake48)
     print(fake48.shape)
     print(pred48.shape)
+    G = ResGenerator64(128)
+    D = ResDiscriminator64()
+    z = tf.random.normal((2, 128))
+    fake64 = G(z)
+    pred64 = D(fake64)
+    print(fake64.shape)
+    print(pred64.shape)
     G = ResGenerator128(128)
     D = ResDiscriminator128()
     z = tf.random.normal((2, 128))
