@@ -77,6 +77,47 @@ def car_brand(path, bs):
     return dataset
 
 
+def car_brand_color(path, bs):
+    # 4 classes: Audi_white, Audi_black, BMW_white, BMW_black
+    paths_Audi_white = [path for path in recursive_glob(rootdir=os.path.join(path, 'Audi'), suffix=".jpg") if 'White' in path]
+    num_Audi_white = len(paths_Audi_white)
+    labels_Audi_white = [0]*num_Audi_white
+    paths_Audi_black = [path for path in recursive_glob(rootdir=os.path.join(path, 'Audi'), suffix=".jpg") if 'Black' in path]
+    num_Audi_black = len(paths_Audi_black)
+    labels_Audi_black = [1]*num_Audi_black
+    paths_BMW_white = [path for path in recursive_glob(rootdir=os.path.join(path, 'BMW'), suffix=".jpg") if 'White' in path]
+    num_BMW_white = len(paths_BMW_white)
+    labels_BMW_white = [2]*num_BMW_white
+    paths_BMW_black = [path for path in recursive_glob(rootdir=os.path.join(path, 'BMW'), suffix=".jpg") if 'Black' in path]
+    num_BMW_black = len(paths_BMW_black)
+    labels_BMW_black = [3]*num_BMW_black
+    print("Found {} images: {}/{}/{}/{}".format((num_Audi_white + num_Audi_black + num_BMW_white + num_BMW_black), num_Audi_white, num_Audi_black, num_BMW_white, num_BMW_black))
+
+    ds_Audi_white = tf.data.Dataset.from_tensor_slices((paths_Audi_white, labels_Audi_white))
+    ds_Audi_white = ds_Audi_white.map(preprocessing_car, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    ds_Audi_white = ds_Audi_white.shuffle(2000)
+    ds_Audi_white = ds_Audi_white.repeat()
+
+    ds_Audi_black = tf.data.Dataset.from_tensor_slices((paths_Audi_black, labels_Audi_black))
+    ds_Audi_black = ds_Audi_black.map(preprocessing_car, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    ds_Audi_black = ds_Audi_black.shuffle(2000)
+    ds_Audi_black = ds_Audi_black.repeat()
+
+    ds_BMW_white = tf.data.Dataset.from_tensor_slices((paths_BMW_white, labels_BMW_white))
+    ds_BMW_white = ds_BMW_white.map(preprocessing_car, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    ds_BMW_white = ds_BMW_white.shuffle(2000)
+    ds_BMW_white = ds_BMW_white.repeat()
+
+    ds_BMW_black = tf.data.Dataset.from_tensor_slices((paths_BMW_black, labels_BMW_black))
+    ds_BMW_black = ds_BMW_black.map(preprocessing_car, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    ds_BMW_black = ds_BMW_black.shuffle(2000)
+    ds_BMW_black = ds_BMW_black.repeat()
+
+    dataset = tf.data.Dataset.sample_from_datasets([ds_Audi_white, ds_Audi_black, ds_BMW_white, ds_BMW_black], weights=[1/4, 1/4, 1/4, 1/4])
+    dataset = dataset.batch(bs, drop_remainder=True).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    return dataset
+
+
 def preprocessing_cifar10(img, label):
     img = tf.cast(img, tf.float32)
     img = tf.image.random_flip_left_right(img)
@@ -123,6 +164,10 @@ def get_dataset(ds, path, bs):
         dataset = car_brand(path, bs)
         return iter(dataset)
 
+    if ds == 'car_brand_color':
+        dataset = car_brand_color(path, bs)
+        return iter(dataset)
+
     if ds == 'cifar10':
         dataset, test_dataset = cifar10(bs), cifar10(1024, False)
         real_data_act = calc_statistic(test_dataset)
@@ -136,6 +181,10 @@ if __name__ == '__main__':
     print(labels.shape)
     print(real_data_act.shape)
     dataset = get_dataset('car_brand', './confirmed_fronts', 32)
+    images, labels = next(dataset)
+    print(images.shape)
+    print(labels.shape)
+    dataset = get_dataset('car_brand_color', './confirmed_fronts', 32)
     images, labels = next(dataset)
     print(images.shape)
     print(labels.shape)

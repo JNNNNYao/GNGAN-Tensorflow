@@ -104,3 +104,11 @@ if __name__ == '__main__':
 # python3 demo.py --ckpt=logdir/cGAN/model/ --logdir=output/Audi --condition --c=0 --n_classes=3
 # python3 demo.py --ckpt=logdir/cGAN/model/ --logdir=output/BMW --condition --c=1 --n_classes=3
 # python3 demo.py --ckpt=logdir/cGAN/model/ --logdir=output/Mercedes-Benz --condition --c=2 --n_classes=3
+
+# python3 demo.py --ckpt=logdir/cGAN/model/ --logdir=group7/Audi --condition --c=0 --n_classes=3 --arch=resnet.64
+# python3 demo.py --ckpt=logdir/cGAN/model/ --logdir=group7/BMW --condition --c=1 --n_classes=3 --arch=resnet.64
+# python3 demo.py --ckpt=logdir/cGAN/model/ --logdir=group7/Mercedes-Benz --condition --c=2 --n_classes=3 --arch=resnet.64
+# python3 demo.py --ckpt=logdir/color/model/ --logdir=group7/White/Audi --condition --c=0 --n_classes=4 --arch=resnet.64
+# python3 demo.py --ckpt=logdir/color/model/ --logdir=group7/Black/Audi --condition --c=1 --n_classes=4 --arch=resnet.64
+# python3 demo.py --ckpt=logdir/color/model/ --logdir=group7/White/BMW --condition --c=2 --n_classes=4 --arch=resnet.64
+# python3 demo.py --ckpt=logdir/color/model/ --logdir=group7/Black/BMW --condition --c=3 --n_classes=4 --arch=resnet.64

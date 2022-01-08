@@ -41,7 +41,7 @@ loss_fns = {
 }
 
 
-datasets = ['car_brand']
+datasets = ['car_brand', 'car_brand_color']
 
 
 def get_arguments():
@@ -53,17 +53,17 @@ def get_arguments():
     parser.add_argument("--arch", type=str, default="dcgan.64", choices=net_G_models.keys(), help="options: {}".format(net_G_models.keys()))
     parser.add_argument("--loss", type=str, default="bce", choices=loss_fns.keys(), help="options: {}".format(loss_fns.keys()))
     parser.add_argument("--total_steps", type=int, default=200000, help="total number of training steps")
-    parser.add_argument("--batch_size_D", type=int, default=64, help="batch size for discriminator")
-    parser.add_argument("--batch_size_G", type=int, default=128, help="batch size for generator")
+    parser.add_argument("--batch_size_D", type=int, default=43, help="batch size for discriminator")
+    parser.add_argument("--batch_size_G", type=int, default=129, help="batch size for generator")
     parser.add_argument("--lr_D", type=float, default=2e-4, help="Discriminator learning rate")
     parser.add_argument("--lr_G", type=float, default=2e-4, help="Generator learning rate")
     parser.add_argument("--beta_1", type=float, default=0.0, help="for Adam")
     parser.add_argument("--beta_2", type=float, default=0.9, help="for Adam")
     parser.add_argument("--n_dis", type=int, default=1, help="update Generator every this steps")
     parser.add_argument("--z_dim", type=int, default=128, help="latent space dimension")
+    parser.add_argument("--n_classes", type=int, default=3, help="# classes for condition GAN")
     # logging
     parser.add_argument("--sample_step", type=int, default=1000, help="sample image every this steps")
-    parser.add_argument("--sample_size", type=int, default=24, help="sampling size of images")
     parser.add_argument("--save_step", type=int, default=5000, help="save model every this step")
     parser.add_argument("--num_images", type=int, default=16384, help="# images for evaluation")
     parser.add_argument("--logdir", type=str, default="./logdir", help="log folder")    
@@ -72,8 +72,8 @@ def get_arguments():
 
 def make_grid(sample, idx):
     plt.figure(figsize=(10,4))
-    for i in range(24):
-        plt.subplot(3, 8, i+1)
+    for i in range(args.n_classes*8):
+        plt.subplot(args.n_classes, 8, i+1)
         plt.imshow(sample[i])
         plt.axis('off')
     plt.subplots_adjust(wspace=0, hspace=0)
@@ -95,8 +95,8 @@ def train_D_step(images, label, wrong_label):
         # discriminator will get 3 kinds of pair:
         # (real_img, real_label), (fake_img, real_label), (real_img, wrong_label)
         # only the first pair is valid pair
-        label_map = label[:, tf.newaxis, tf.newaxis, :] * tf.ones((images.shape[0], images.shape[1], images.shape[2], 3))
-        wrong_label_map = wrong_label[:, tf.newaxis, tf.newaxis, :] * tf.ones((images.shape[0], images.shape[1], images.shape[2], 3))
+        label_map = label[:, tf.newaxis, tf.newaxis, :] * tf.ones((images.shape[0], images.shape[1], images.shape[2], args.n_classes))
+        wrong_label_map = wrong_label[:, tf.newaxis, tf.newaxis, :] * tf.ones((images.shape[0], images.shape[1], images.shape[2], args.n_classes))
         pair1 = tf.concat([images, label_map], -1)
         pair2 = tf.concat([fake_images, label_map], -1)
         pair3 = tf.concat([images, wrong_label_map], -1)
@@ -124,7 +124,7 @@ def train_G_step(label):
 
     with tf.GradientTape() as gen_tape, tf.GradientTape() as gn_tape:
         fake_images = net_G(tf.concat([z, label], -1))
-        label_map = label[:, tf.newaxis, tf.newaxis, :] * tf.ones((fake_images.shape[0], fake_images.shape[1], fake_images.shape[2], 3))
+        label_map = label[:, tf.newaxis, tf.newaxis, :] * tf.ones((fake_images.shape[0], fake_images.shape[1], fake_images.shape[2], args.n_classes))
         D_input = tf.concat([fake_images, label_map], -1)
         gn_tape.watch(D_input)
         y = net_D(D_input)
@@ -144,10 +144,13 @@ def train_G_step(label):
 
 def train():
     # fixed z
-    fixed_z = tf.random.normal((args.sample_size, args.z_dim))
+    fixed_z = tf.random.normal((args.n_classes*8, args.z_dim))
     fixed_z = tf.Variable(fixed_z)  # trackable for tf.train.Checkpoint
     # fixed z
-    fixed_label = tf.one_hot(([0]*8 + [1]*8 + [2]*8), 3)
+    fixed_label = []
+    for i in range(args.n_classes):
+        fixed_label += [i]*8
+    fixed_label = tf.one_hot((fixed_label), args.n_classes)
     fixed_label = tf.Variable(fixed_label)  # trackable for tf.train.Checkpoint
 
     writer = tf.summary.create_file_writer(str(args.logdir), max_queue=1000, flush_millis=20000)
@@ -178,9 +181,9 @@ def train():
             loss_fake_sum = 0
 
             x, labels = next(dataset)
-            wrong_labels = tf.math.floormod(labels + tf.random.uniform(labels.shape, 1, 3, dtype=tf.int32), 3)
-            labels = tf.one_hot(tf.reshape(labels, (x.shape[0])), 3)
-            wrong_labels = tf.one_hot(tf.reshape(wrong_labels, (x.shape[0])), 3)
+            wrong_labels = tf.math.floormod(labels + tf.random.uniform(labels.shape, 1, args.n_classes, dtype=tf.int32), args.n_classes)
+            labels = tf.one_hot(tf.reshape(labels, (x.shape[0])), args.n_classes)
+            wrong_labels = tf.one_hot(tf.reshape(wrong_labels, (x.shape[0])), args.n_classes)
             x = iter(tf.split(x, num_or_size_splits=args.n_dis))
             labels = iter(tf.split(labels, num_or_size_splits=args.n_dis))
             wrong_labels = iter(tf.split(wrong_labels, num_or_size_splits=args.n_dis))
@@ -202,8 +205,8 @@ def train():
             pbar.set_postfix(loss_real='%.3f' % loss_real, loss_fake='%.3f' % loss_fake)
 
             # Generator
-            label = tf.random.uniform((args.batch_size_G,), 0, 3, dtype=tf.int32)
-            label = tf.one_hot(label, 3)
+            label = tf.random.uniform((args.batch_size_G,), 0, args.n_classes, dtype=tf.int32)
+            label = tf.one_hot(label, args.n_classes)
             loss_G = train_G_step(label)
 
             # write summaries
